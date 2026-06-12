@@ -9,17 +9,16 @@ import com.example.project.dto.response.AuthResponse;
 import com.example.project.dto.response.ForgotPasswordResponse;
 import com.example.project.dto.response.UserResponse;
 import com.example.project.entity.PasswordResetToken;
-import com.example.project.entity.TokenBlacklist;
 import com.example.project.entity.User;
 import com.example.project.enums.Role;
 import com.example.project.enums.UserStatus;
 import com.example.project.exception.ConflictException;
 import com.example.project.exception.ResourceNotFoundException;
 import com.example.project.repository.PasswordResetTokenRepository;
-import com.example.project.repository.TokenBlacklistRepository;
 import com.example.project.repository.UserRepository;
 import com.example.project.security.JwtService;
 import com.example.project.service.AuthService;
+import com.example.project.service.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -38,7 +37,7 @@ import java.util.UUID;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final TokenBlacklistService tokenBlacklistService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
@@ -104,6 +103,13 @@ public class AuthServiceImpl implements AuthService {
     // ===== Refresh Token =====
     @Override
     public AuthResponse refreshToken(String refreshToken) {
+        if (tokenBlacklistService.isRevoked(refreshToken)) {
+            throw new IllegalArgumentException("Refresh token has been revoked");
+        }
+        if (!jwtService.isRefreshToken(refreshToken)) {
+            throw new IllegalArgumentException("Invalid refresh token");
+        }
+
         String username = jwtService.extractUsername(refreshToken);
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -112,29 +118,19 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Refresh token expired, please login again");
         }
 
-        String newAccessToken = jwtService.generateAccessToken(user);
+        tokenBlacklistService.revoke(refreshToken, jwtService.getRemainingTime(refreshToken));
 
-        return buildAuthResponse(user, newAccessToken, refreshToken);
+        String newAccessToken = jwtService.generateAccessToken(user);
+        String newRefreshToken = jwtService.generateRefreshToken(user);
+
+        return buildAuthResponse(user, newAccessToken, newRefreshToken);
     }
 
     // ===== UC-03: Đăng xuất - Blacklist token =====
     @Override
     @Transactional
     public void logout(String token) {
-        if (tokenBlacklistRepository.existsByToken(token)) {
-            return; // Already revoked
-        }
-
-        long remainingMs = jwtService.getRemainingTime(token);
-        LocalDateTime expiresAt = LocalDateTime.now()
-                .plusNanos(remainingMs * 1_000_000);
-
-        TokenBlacklist blacklisted = TokenBlacklist.builder()
-                .token(token)
-                .expiresAt(expiresAt)
-                .build();
-
-        tokenBlacklistRepository.save(blacklisted);
+        tokenBlacklistService.revoke(token, jwtService.getRemainingTime(token));
         log.info("Token revoked successfully");
     }
 

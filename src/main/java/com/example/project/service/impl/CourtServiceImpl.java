@@ -114,6 +114,18 @@ public class CourtServiceImpl implements CourtService {
 
     @Override
     @Transactional
+    public List<CourtImageResponse> uploadCourtImages(Long courtId, List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("At least one image file is required");
+        }
+
+        return files.stream()
+                .map(file -> uploadCourtImage(courtId, file))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
     public void deleteCourtImage(Long courtId, Long imageId) {
         CourtImage image = courtImageRepository.findById(imageId)
                 .orElseThrow(() -> new ResourceNotFoundException("CourtImage", imageId));

@@ -1,6 +1,7 @@
 package com.example.project.config;
 
 import com.example.project.dto.response.BookingResponse;
+import org.aspectj.lang.ProceedingJoinPoint;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.*;
@@ -69,6 +70,24 @@ public class LoggingAspect {
                 joinPoint.getTarget().getClass().getSimpleName(),
                 joinPoint.getSignature().getName(),
                 ex.getMessage());
+    }
+
+    // ===== FR-11: Ghi log thời gian thực hiện cho tất cả chức năng service =====
+    @Pointcut("execution(* com.example.project.service.impl..*(..))")
+    public void serviceLayer() {}
+
+    @Around("serviceLayer()")
+    public Object logExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
+        long start = System.currentTimeMillis();
+        try {
+            return joinPoint.proceed();
+        } finally {
+            long durationMs = System.currentTimeMillis() - start;
+            log.info("[PERFORMANCE] {}.{} executed in {} ms",
+                    joinPoint.getTarget().getClass().getSimpleName(),
+                    joinPoint.getSignature().getName(),
+                    durationMs);
+        }
     }
 }
 

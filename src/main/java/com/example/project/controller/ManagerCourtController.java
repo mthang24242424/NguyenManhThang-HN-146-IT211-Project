@@ -14,6 +14,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/manager/courts")
 @RequiredArgsConstructor
@@ -57,6 +59,16 @@ public class ManagerCourtController {
 
         CourtImageResponse image = courtService.uploadCourtImage(id, file);
         return ResponseEntity.ok(ApiResponse.success("Image uploaded successfully", image));
+    }
+
+    // POST /api/v1/manager/courts/1/images/batch (FR-09)
+    @PostMapping(value = "/{id}/images/batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<List<CourtImageResponse>>> uploadCourtImages(
+            @PathVariable Long id,
+            @RequestParam("files") List<MultipartFile> files) {
+
+        List<CourtImageResponse> images = courtService.uploadCourtImages(id, files);
+        return ResponseEntity.ok(ApiResponse.success("Images uploaded successfully", images));
     }
 
     // DELETE /api/v1/manager/courts/1/images/2

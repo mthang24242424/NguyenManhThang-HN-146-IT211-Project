@@ -1,5 +1,6 @@
 package com.example.project.service.impl;
 
+import com.example.project.dto.request.CreateUserRequest;
 import com.example.project.dto.request.UpdateUserRequest;
 import com.example.project.dto.response.UserResponse;
 import com.example.project.entity.User;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,34 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    // FR-05: Tạo user bởi admin
+    @Override
+    @Transactional
+    public UserResponse createUser(CreateUserRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new ConflictException("Username '" + request.getUsername() + "' already exists");
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Email '" + request.getEmail() + "' is already in use");
+        }
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .email(request.getEmail())
+                .fullName(request.getFullName())
+                .phoneNumber(request.getPhoneNumber())
+                .role(request.getRole())
+                .status(request.getStatus() != null ? request.getStatus() : UserStatus.ACTIVE)
+                .build();
+
+        User savedUser = userRepository.save(user);
+        log.info("User created by admin: {}", savedUser.getUsername());
+
+        return toUserResponse(savedUser);
+    }
 
     // FR-05: Tìm kiếm + Phân trang
     @Override

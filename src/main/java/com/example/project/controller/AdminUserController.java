@@ -1,6 +1,7 @@
 package com.example.project.controller;
 
 
+import com.example.project.dto.request.CreateUserRequest;
 import com.example.project.dto.request.UpdateUserRequest;
 import com.example.project.dto.response.ApiResponse;
 import com.example.project.dto.response.UserResponse;
@@ -13,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +26,17 @@ import org.springframework.web.bind.annotation.*;
 public class AdminUserController {
 
     private final UserService userService;
+
+    // ===== FR-05: Tạo user =====
+    // POST /api/v1/admin/users
+    @PostMapping
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
+            @Valid @RequestBody CreateUserRequest request) {
+
+        UserResponse created = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("User created successfully", created));
+    }
 
     // ===== FR-05: Lấy danh sách user (Tìm kiếm + Phân trang) =====
     // GET /api/v1/admin/users?keyword=john&role=CUSTOMER&status=ACTIVE&page=0&size=10

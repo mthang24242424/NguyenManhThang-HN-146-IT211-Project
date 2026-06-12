@@ -1,6 +1,6 @@
 package com.example.project.security;
 
-import com.example.project.repository.TokenBlacklistRepository;
+import com.example.project.service.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,7 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
-    private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(
@@ -44,9 +44,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt = authHeader.substring(7);
 
         // Kiểm tra token trong blacklist (UC-03)
-        if (tokenBlacklistRepository.existsByToken(jwt)) {
+        if (tokenBlacklistService.isRevoked(jwt)) {
             log.warn("Blocked request with revoked token to: {}", request.getRequestURI());
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Token has been revoked");
+            return;
+        }
+
+        if (!jwtService.isAccessToken(jwt)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid token type");
             return;
         }
 

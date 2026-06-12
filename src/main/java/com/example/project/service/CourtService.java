@@ -23,5 +23,7 @@ public interface CourtService {
 
     CourtImageResponse uploadCourtImage(Long courtId, MultipartFile file);
 
+    List<CourtImageResponse> uploadCourtImages(Long courtId, List<MultipartFile> files);
+
     void deleteCourtImage(Long courtId, Long imageId);
 }

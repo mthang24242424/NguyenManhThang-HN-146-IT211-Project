@@ -72,6 +72,18 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get("type", String.class));
+    }
+
+    public boolean isAccessToken(String token) {
+        return "ACCESS".equals(extractTokenType(token));
+    }
+
+    public boolean isRefreshToken(String token) {
+        return "REFRESH".equals(extractTokenType(token));
+    }
+
     public long getRemainingTime(String token) {
         Date expiration = extractExpiration(token);
         return expiration.getTime() - System.currentTimeMillis();
